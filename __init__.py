@@ -1,0 +1,1 @@
+"""MiHeater custom component."""

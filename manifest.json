@@ -1,0 +1,12 @@
+{
+  "domain": "miheater",
+  "name": "MiHeater",
+  "documentation": "https://github.com/bazuchan/miheater-home-assistant",
+  "requirements": [
+    "python-miio>=0.4.5"
+  ],
+  "dependencies": [],
+  "codeowners": [
+    "@bazuchan"
+  ]
+}
