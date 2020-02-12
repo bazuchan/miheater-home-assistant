@@ -1,0 +1,19 @@
+set_params:
+  description: Set heater parameters
+  fields:
+    entity_id:
+      description: Name(s) of the entities to set
+      example: "climate.my_heater"
+    brightness:
+      description: "Brightness: bright, dim, off"
+      example: dim
+    child_lock:
+      description: "Child Lock: False/True"
+      example: False
+    buzzer:
+      description: "Buzzer: False/True"
+      example: True
+    poweroff_time:
+      description: "Delay off seconds 0-32940"
+      example: 0
+

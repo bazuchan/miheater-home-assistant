@@ -1,4 +1,5 @@
 import logging
+import asyncio
 import voluptuous as vol
 from typing import List, Dict, Optional, Any
 
@@ -7,8 +8,8 @@ from homeassistant.components.climate import (ClimateDevice,
 from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE)
 from homeassistant.const import (
-    ATTR_TEMPERATURE, CONF_HOST, CONF_NAME, CONF_TOKEN,
-    STATE_ON, STATE_OFF, TEMP_CELSIUS)
+    ATTR_ENTITY_ID, ATTR_TEMPERATURE, CONF_HOST, CONF_NAME,
+    CONF_TOKEN, STATE_ON, STATE_OFF, TEMP_CELSIUS)
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity import generate_entity_id
 from homeassistant.exceptions import PlatformNotReady
@@ -20,6 +21,9 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = 'miheater'
 DEFAULT_NAME = 'MiHeater'
+
+DATA_KEY = "climate.miheater"
+
 CONF_MODEL = 'model'
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
@@ -44,9 +48,29 @@ ATTR_BUZZER = 'buzzer'
 ATTR_BRIGHTNESS = 'brightness'
 ATTR_DELAY_OFF = 'poweroff_time'
 
+SERVICE_SET_PARAMS = 'set_params'
+
+CLIMATE_SET_PARAMS_SCHEMA = vol.Schema({
+        vol.Optional(ATTR_ENTITY_ID): cv.entity_ids,
+        vol.Exclusive(ATTR_BRIGHTNESS, "Brightness: bright, dim, off"): vol.All(cv.string, vol.Capitalize, vol.Coerce(Brightness.__getitem__)),
+        vol.Exclusive(ATTR_BUZZER, "Buzzer: False, True"): vol.Coerce(vol.Boolean()),
+        vol.Exclusive(ATTR_CHILD_LOCK, "Child Lock: False, True"): vol.Coerce(vol.Boolean()),
+        vol.Exclusive(ATTR_DELAY_OFF, "Delay off seconds 0-32940"): vol.All(vol.Coerce(int), vol.Clamp(min=0, max=32940)),
+})
+
+HEATER_SET_PARAMS_MAP = {
+        ATTR_CHILD_LOCK: 'set_child_lock',
+        ATTR_BUZZER: 'set_buzzer',
+        ATTR_BRIGHTNESS: 'set_brightness',
+        ATTR_DELAY_OFF: 'delay_off',
+}
+
 async def async_setup_platform(hass, config, async_add_entities,
                                discovery_info=None):
     """Perform the setup for Xiaomi heaters."""
+    if DATA_KEY not in hass.data:
+        hass.data[DATA_KEY] = {}
+
     host = config.get(CONF_HOST)
     name = config.get(CONF_NAME)
     token = config.get(CONF_TOKEN)
@@ -72,7 +96,24 @@ async def async_setup_platform(hass, config, async_add_entities,
         _LOGGER.error("Got exception while setting up device: %s", ex)
         raise PlatformNotReady
 
+    hass.data[DATA_KEY][host] = miHeater
     async_add_entities([miHeater], update_before_add=True)
+    _LOGGER.info("Initializing Xiaomi heaters with host %s (token %s...) object", host, token[:5])
+
+    async def async_set_params(service):
+        _LOGGER.info("miheater.set_params: %s", str(service.data.items()))
+        entity_ids = service.data.get(ATTR_ENTITY_ID)
+        params = {key: value for key, value in service.data.items() if key != ATTR_ENTITY_ID}
+        mhs = [mh for mh in hass.data[DATA_KEY].values() if mh.entity_id in entity_ids]
+        update_tasks = []
+        for mh in mhs:
+            await mh.async_set_params(params)
+            update_tasks.append(mh.async_update_ha_state(True))
+        if update_tasks:
+            await asyncio.wait(update_tasks)
+        _LOGGER.info("miheater.set_params: done")
+
+    hass.services.async_register(DOMAIN, SERVICE_SET_PARAMS, async_set_params, schema=CLIMATE_SET_PARAMS_SCHEMA)
     _LOGGER.info("Initializing Xiaomi heaters with host %s (token %s...) done", host, token[:5])
 
 class MiHeater(ClimateDevice):
@@ -196,4 +237,10 @@ class MiHeater(ClimateDevice):
             await self.async_turn_off()
         else:
             _LOGGER.error("Unrecognized operation mode: %s", hvac_mode)
+
+    async def async_set_params(self, params: dict) -> None:
+        """Set heater parameters."""
+        for param, func in HEATER_SET_PARAMS_MAP.items():
+            if param in params:
+                 await self.hass.async_add_executor_job(getattr(self._device, func), params[param])
 
