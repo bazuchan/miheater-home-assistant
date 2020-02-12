@@ -1,6 +1,6 @@
 import logging
 import voluptuous as vol
-from typing import List, Optional
+from typing import List, Dict, Optional, Any
 
 from homeassistant.components.climate import (ClimateDevice,
         PLATFORM_SCHEMA, HVAC_MODE_OFF, HVAC_MODE_HEAT)
@@ -39,6 +39,11 @@ TARGET_TEMP_RANGE = {
     MODEL_HEATER_MA1: (20.0, 32.0),
 }
 
+ATTR_CHILD_LOCK = 'child_lock'
+ATTR_BUZZER = 'buzzer'
+ATTR_BRIGHTNESS = 'brightness'
+ATTR_DELAY_OFF = 'poweroff_time'
+
 async def async_setup_platform(hass, config, async_add_entities,
                                discovery_info=None):
     """Perform the setup for Xiaomi heaters."""
@@ -52,18 +57,16 @@ async def async_setup_platform(hass, config, async_add_entities,
     unique_id = None
 
     try:
-        #device = Heater(host, token, model = model)
-
-        #device_info = await hass.async_add_executor_job(device.info)
-        #if not model:
-        #   model = device_info.model
-        #unique_id = "{}-{}".format(model, device_info.mac_address)
-        #_LOGGER.info("%s %s %s detected",
-        #             model,
-        #             device_info.firmware_version,
-        #             device_info.hardware_version)
-        #miHeater = MiHeater(device, name, model, unique_id, hass)
-        miHeater = MiHeater([host,token,name], name, MODEL_HEATER_ZA1, 'bla-bla-heater', hass)
+        device = Heater(host, token, model = model)
+        device_info = await hass.async_add_executor_job(device.info)
+        if not model:
+           model = device_info.model
+        unique_id = "{}-{}".format(model, device_info.mac_address)
+        _LOGGER.info("%s %s %s detected",
+                     model,
+                     device_info.firmware_version,
+                     device_info.hardware_version)
+        miHeater = MiHeater(device, name, model, unique_id, hass)
 
     except DeviceException as ex:
         _LOGGER.error("Got exception while setting up device: %s", ex)
@@ -98,6 +101,22 @@ class MiHeater(ClimateDevice):
     def supported_features(self) -> int:
         """Return the list of supported features."""
         return SUPPORT_TARGET_TEMPERATURE
+
+    @property
+    def state_attributes(self) -> Dict[str, Any]:
+        """Return the optional state attributes."""
+        data = super().state_attributes
+        for attr in [ATTR_DELAY_OFF, ATTR_BRIGHTNESS, ATTR_BUZZER, ATTR_CHILD_LOCK]:
+            if attr in self._state and self._state[attr] not in ['NULL', None]:
+                data[attr] = self._state[attr]
+        return data
+
+    @property
+    def current_humidity(self) -> Optional[int]:
+        """Return the current humidity."""
+        if 'relative_humidity' in self._state and self._state['relative_humidity'] not in ['NULL', None]:
+            return self._state['relative_humidity']
+        return None
 
     @property
     def temperature_unit(self) -> str:
@@ -161,14 +180,13 @@ class MiHeater(ClimateDevice):
     async def async_update(self) -> None:
         """Retrieve latest state."""
         try:
-            #data = await self.hass.async_add_executor_job(self._device.status)
-            data = {'power': 'on', 'target_temperature': 21.1, 'temperature': 15.2}
+            data = await self.hass.async_add_executor_job(self._device.status)
         except DeviceException as ex:
             self._available = False
             _LOGGER.error("Got exception while fetching the state: %s", ex)
             raise PlatformNotReady
         self._available = True
-        self._state = data
+        self._state = data.__dict__['data']
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         """Set operation mode."""
