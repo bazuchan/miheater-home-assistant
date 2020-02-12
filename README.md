@@ -1,15 +1,19 @@
-Home-Assistant custom component for SmartMi Zhimi Heaters. Supports recent home-assistant versions (0.105.3 currently).
+#### Home-Assistant custom component for SmartMi Zhimi Heaters.
+Supports recent home-assistant versions (0.105.3 currently).
 
 Supported models:
   - zhimi.heater.za1
   - zhimi.elecheater.ma1
 
 Installation:
-  cd <path of your home-assistant>/custom_components
-  git clone https://github.com/bazuchan/miheater-home-assistant.git miheater
+```
+cd <path of your home-assistant>/custom_components
+git clone https://github.com/bazuchan/miheater-home-assistant.git miheater
+```
 
 Configuration:
-  add to your configuration.yaml following values:
+
+add to your configuration.yaml following values:
 
 ```climate:
   - platform: miheater
