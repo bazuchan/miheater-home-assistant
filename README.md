@@ -5,16 +5,16 @@ Supported models:
   - zhimi.elecheater.ma1
 
 Installation:
-cd <path of your home-assistant>/custom_components
-git clone https://github.com/bazuchan/miheater-home-assistant.git miheater
+  cd <path of your home-assistant>/custom_components
+  git clone https://github.com/bazuchan/miheater-home-assistant.git miheater
 
 Configuration:
-add to your configuration.yaml following values:
+  add to your configuration.yaml following values:
 
-climate:
+```climate:
   - platform: miheater
       name: Bedroom Heater
       host: 192.168.0.10
       token: !secret bedroom_heater
       model: zhimi.heater.za1
-
+```
