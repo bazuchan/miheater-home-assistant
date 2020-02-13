@@ -149,8 +149,8 @@ class MiHeater(ClimateDevice):
     @property
     def current_humidity(self) -> Optional[int]:
         """Return the current humidity."""
-        if 'relative_humidity' in self._state and self._state['relative_humidity'] not in ['NULL', None]:
-            return self._state['relative_humidity']
+        if 'humidity' in self._state and self._state['humidity'] not in ['NULL', None]:
+            return self._state['humidity']
         return None
 
     @property
