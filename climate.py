@@ -6,7 +6,7 @@ from typing import List, Dict, Optional, Any
 from homeassistant.components.climate import (ClimateDevice,
         PLATFORM_SCHEMA, HVAC_MODE_OFF, HVAC_MODE_HEAT)
 from homeassistant.components.climate.const import (
-    SUPPORT_TARGET_TEMPERATURE)
+    SUPPORT_TARGET_TEMPERATURE, ATTR_HUMIDITY)
 from homeassistant.const import (
     ATTR_ENTITY_ID, ATTR_TEMPERATURE, CONF_HOST, CONF_NAME,
     CONF_TOKEN, STATE_ON, STATE_OFF, TEMP_CELSIUS)
@@ -14,7 +14,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity import generate_entity_id
 from homeassistant.exceptions import PlatformNotReady
 
-from .heater import Heater, Brightness, MODEL_HEATER_ZA1, MODEL_HEATER_MA1
+from .heater import Heater, Brightness, SUPPORTED_MODELS
 from miio.exceptions import DeviceException
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,23 +30,17 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_HOST): cv.string,
     vol.Required(CONF_TOKEN): vol.All(cv.string, vol.Length(min=32, max=32)),
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-    vol.Optional(CONF_MODEL): vol.In(
-        [
-            MODEL_HEATER_ZA1,
-            MODEL_HEATER_MA1,
-        ]
-    ),
+    vol.Optional(CONF_MODEL): vol.In(SUPPORTED_MODELS.keys()),
 })
 
-TARGET_TEMP_RANGE = {
-    MODEL_HEATER_ZA1: (16.0, 32.0),
-    MODEL_HEATER_MA1: (20.0, 32.0),
-}
-
+ATTR_POWER = 'power'
+ATTR_TARGET_TEMPERATURE = 'target_temperature'
 ATTR_CHILD_LOCK = 'child_lock'
 ATTR_BUZZER = 'buzzer'
 ATTR_BRIGHTNESS = 'brightness'
-ATTR_DELAY_OFF = 'poweroff_time'
+ATTR_DELAY_OFF = 'delay_off_countdown'
+
+ALL_ATTRS = [ATTR_POWER, ATTR_TARGET_TEMPERATURE, ATTR_TEMPERATURE, ATTR_HUMIDITY, ATTR_BUZZER, ATTR_BRIGHTNESS, ATTR_CHILD_LOCK, ATTR_DELAY_OFF]
 
 SERVICE_SET_PARAMS = 'set_params'
 
@@ -186,12 +180,12 @@ class MiHeater(ClimateDevice):
     @property
     def min_temp(self) -> float:
         """Return the minimum temperature."""
-        return TARGET_TEMP_RANGE[self._model][0]
+        return SUPPORTED_MODELS[self._model]['temperature_range'][0]
 
     @property
     def max_temp(self) -> float:
         """Return the maximum temperature."""
-        return TARGET_TEMP_RANGE[self._model][1]
+        return SUPPORTED_MODELS[self._model]['temperature_range'][1]
 
     @property
     def hvac_modes(self) -> List[str]:
@@ -227,7 +221,13 @@ class MiHeater(ClimateDevice):
             _LOGGER.error("Got exception while fetching the state: %s", ex)
             raise PlatformNotReady
         self._available = True
-        self._state = data.__dict__['data']
+
+        def preformat(x):
+            if type(x) == Brightness:
+                return x.name.lower()
+            return x
+
+        self._state = {attr: preformat(getattr(data, attr)) for attr in ALL_ATTRS}
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         """Set operation mode."""

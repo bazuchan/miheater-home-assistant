@@ -13,7 +13,7 @@ set_params:
     buzzer:
       description: "Buzzer: False/True"
       example: True
-    poweroff_time:
+    delay_off_countdown:
       description: "Delay off seconds 0-32940"
       example: 0
 
