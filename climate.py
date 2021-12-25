@@ -14,7 +14,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity import generate_entity_id
 from homeassistant.exceptions import PlatformNotReady
 
-from .heater import Heater, Brightness, SUPPORTED_MODELS
+from miio.heater import Heater, Brightness, SUPPORTED_MODELS
 from miio.exceptions import DeviceException
 
 _LOGGER = logging.getLogger(__name__)
