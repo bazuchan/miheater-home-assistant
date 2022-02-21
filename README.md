@@ -5,12 +5,6 @@ Supported models:
   - zhimi.heater.za1
   - zhimi.elecheater.ma1
 
-Installation:
-```
-cd <path of your home-assistant>/custom_components
-git clone https://github.com/bazuchan/miheater-home-assistant.git miheater
-```
-
 Configuration:
 
 add to your configuration.yaml following values:
