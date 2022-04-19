@@ -3,15 +3,14 @@ import asyncio
 import voluptuous as vol
 from typing import List, Dict, Optional, Any
 
-from homeassistant.components.climate import (ClimateDevice,
-        PLATFORM_SCHEMA, HVAC_MODE_OFF, HVAC_MODE_HEAT)
+from homeassistant.components.climate import (
+    ClimateEntity, PLATFORM_SCHEMA)
 from homeassistant.components.climate.const import (
-    SUPPORT_TARGET_TEMPERATURE, ATTR_HUMIDITY)
+    SUPPORT_TARGET_TEMPERATURE, ATTR_HUMIDITY, HVAC_MODE_OFF, HVAC_MODE_HEAT)
 from homeassistant.const import (
     ATTR_ENTITY_ID, ATTR_TEMPERATURE, CONF_HOST, CONF_NAME,
-    CONF_TOKEN, STATE_ON, STATE_OFF, TEMP_CELSIUS)
+    CONF_TOKEN, TEMP_CELSIUS)
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.entity import generate_entity_id
 from homeassistant.exceptions import PlatformNotReady
 
 from miio.heater import Heater, Brightness, SUPPORTED_MODELS
@@ -45,18 +44,18 @@ ALL_ATTRS = [ATTR_POWER, ATTR_TARGET_TEMPERATURE, ATTR_TEMPERATURE, ATTR_HUMIDIT
 SERVICE_SET_PARAMS = 'set_params'
 
 CLIMATE_SET_PARAMS_SCHEMA = vol.Schema({
-        vol.Optional(ATTR_ENTITY_ID): cv.entity_ids,
-        vol.Exclusive(ATTR_BRIGHTNESS, "Brightness: bright, dim, off"): vol.All(cv.string, vol.Capitalize, vol.Coerce(Brightness.__getitem__)),
-        vol.Exclusive(ATTR_BUZZER, "Buzzer: False, True"): vol.Coerce(vol.Boolean()),
-        vol.Exclusive(ATTR_CHILD_LOCK, "Child Lock: False, True"): vol.Coerce(vol.Boolean()),
-        vol.Exclusive(ATTR_DELAY_OFF, "Delay off seconds 0-32940"): vol.All(vol.Coerce(int), vol.Clamp(min=0, max=32940)),
+    vol.Optional(ATTR_ENTITY_ID): cv.entity_ids,
+    vol.Exclusive(ATTR_BRIGHTNESS, "Brightness: bright, dim, off"): vol.All(cv.string, vol.Capitalize, vol.Coerce(Brightness.__getitem__)),
+    vol.Exclusive(ATTR_BUZZER, "Buzzer: False, True"): vol.Coerce(vol.Boolean()),
+    vol.Exclusive(ATTR_CHILD_LOCK, "Child Lock: False, True"): vol.Coerce(vol.Boolean()),
+    vol.Exclusive(ATTR_DELAY_OFF, "Delay off seconds 0-32940"): vol.All(vol.Coerce(int), vol.Clamp(min=0, max=32940)),
 })
 
 HEATER_SET_PARAMS_MAP = {
-        ATTR_CHILD_LOCK: 'set_child_lock',
-        ATTR_BUZZER: 'set_buzzer',
-        ATTR_BRIGHTNESS: 'set_brightness',
-        ATTR_DELAY_OFF: 'delay_off',
+    ATTR_CHILD_LOCK: 'set_child_lock',
+    ATTR_BUZZER: 'set_buzzer',
+    ATTR_BRIGHTNESS: 'set_brightness',
+    ATTR_DELAY_OFF: 'delay_off',
 }
 
 async def async_setup_platform(hass, config, async_add_entities,
@@ -75,10 +74,10 @@ async def async_setup_platform(hass, config, async_add_entities,
     unique_id = None
 
     try:
-        device = Heater(host, token, model = model)
+        device = Heater(host, token, model=model)
         device_info = await hass.async_add_executor_job(device.info)
         if not model:
-           model = device_info.model
+            model = device_info.model
         unique_id = "{}-{}".format(model, device_info.mac_address)
         _LOGGER.info("%s %s %s detected",
                      model,
@@ -110,13 +109,13 @@ async def async_setup_platform(hass, config, async_add_entities,
     hass.services.async_register(DOMAIN, SERVICE_SET_PARAMS, async_set_params, schema=CLIMATE_SET_PARAMS_SCHEMA)
     _LOGGER.info("Initializing Xiaomi heaters with host %s (token %s...) done", host, token[:5])
 
-class MiHeater(ClimateDevice):
+class MiHeater(ClimateEntity):
     """Representation of a MiHeater device."""
 
     def __init__(self, device, name, model, unique_id, _hass):
         """Initialize the heater."""
         self._device = device
-        self._model = model 
+        self._model = model
         self._unique_id = unique_id
         self._name = name
         self._available = False
@@ -242,5 +241,4 @@ class MiHeater(ClimateDevice):
         """Set heater parameters."""
         for param, func in HEATER_SET_PARAMS_MAP.items():
             if param in params:
-                 await self.hass.async_add_executor_job(getattr(self._device, func), params[param])
-
+                await self.hass.async_add_executor_job(getattr(self._device, func), params[param])
